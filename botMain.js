@@ -1,104 +1,122 @@
-const Discord = require("discord.js");
-const client = new Discord.Client();
- 
+import { Client, GatewayIntentBits } from "discord.js";
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+import registerCommnad from './deploy-commands.mjs';
+
 var rmawl = ['붕괴','옵치','오버워치','메이플','불도저','honkai','금지어1',];
 
 client.on("ready", () => {
   console.log("준비 완료!");
- 
+  registerCommnad();
 });
  
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isChatInputCommand()) return;
 
-
-client.on("message", message => {
-
-    if (message.author.bot) return;
-
-    if (message.content === '!pinga') {
-    message.channel.send("Hello").then((neMessage) => {neMessage.edit("Edited!");});
+    if (interaction.commandName === 'ping') {
+      await interaction.reply('Pong!');
     }
-
-    //---핑---
-    if (message.content === '!ping') {
-    message.reply('`'+Math.floor(client.ping) + ' ms`');
+    if(interaction.commandName == 'server'){
+        await interaction.reply(interaction.guildLocale);
     }
-    if (message.content === '뚱수야 자소서써와') {
-        message.reply("넹");
-        }
-    //-------금지어--------
-    var rmawlmsg = message.content;
-    rmawlmsg = rmawlmsg.replace(/ /gi, "")
+    if(interaction.commandName == 'ping2'){
+        let i= interaction.options.getInteger('int'); 
+        await interaction.reply(i+"");
+    }
+  });
+
+
+// client.on("message", message => {
+
+//     console.log("czxc");
+
+//     if (message.author.bot) return;
+
+//     if (message.content === '!pinga') {
+//     message.channel.send("Hello").then((neMessage) => {neMessage.edit("Edited!");});
+//     }
+
+//     //---핑---
+//     if (message.content === '!ping') {
+//     message.reply('`'+Math.floor(client.ping) + ' ms`');
+//     }
+//     if (message.content === '뚱수야 자소서써와') {
+//         message.reply("넹");
+//         }
+//     //-------금지어--------
+//     var rmawlmsg = message.content;
+//     rmawlmsg = rmawlmsg.replace(/ /gi, "")
     
-    for(i = 0; i < rmawl.length;i++){
-        if (rmawlmsg.indexOf(rmawl[i]) != -1){
-            message.delete()
-            message.channel.send("금지어가 감지되었습니다! ").then((newMsg) => {newMsg.delete(5000);})
-            return;
-          }
-    }
+//     for(i = 0; i < rmawl.length;i++){
+//         if (rmawlmsg.indexOf(rmawl[i]) != -1){
+//             message.delete()
+//             message.channel.send("금지어가 감지되었습니다! ").then((newMsg) => {newMsg.delete(5000);})
+//             return;
+//           }
+//     }
 
-    if(message.content.indexOf("호") != -1){
-        message.delete()
-        message.channel.send("'호'가 감지되었습니다! ").then((newMsg) => {newMsg.delete(5000);})
-        return;
-    }
+//     if(message.content.indexOf("호") != -1){
+//         message.delete()
+//         message.channel.send("'호'가 감지되었습니다! ").then((newMsg) => {newMsg.delete(5000);})
+//         return;
+//     }
 
-    if (message.content.split(" ")[0] == "!금지어") {
-        message.channel.send({embed: {
-            color: 3447003,
-            author: {
-              name: "금지어 목록",
-              icon_url: client.user.avatarURL
-            },
-            title: rmawl.join(', '),
-            //fields: [{
-            //    name: "Fields",
-            //    value: "They can have different fields with small headlines."
-            //  }, 
-            //],
-            timestamp: new Date(),
-            //footer: {
-            //  icon_url: client.user.avatarURL,
-            //  text: "© Example"
-            //}
-          }
-        });
-      }
-//-------사다리타기--------
-  if (message.content.split(" ")[0] == "!사다리타기") {
-    message.reply(ladder(message.content.split(" ")));
-  }
-//-------롤전적--------
-  if (message.content.split(" ")[0] == "!롤전적") {
-  //message.reply(lol(message.content.split(" ")[1]));
+//     if (message.content.split(" ")[0] == "!금지어") {
+//         message.channel.send({embed: {
+//             color: 3447003,
+//             author: {
+//               name: "금지어 목록",
+//               icon_url: client.user.avatarURL
+//             },
+//             title: rmawl.join(', '),
+//             //fields: [{
+//             //    name: "Fields",
+//             //    value: "They can have different fields with small headlines."
+//             //  }, 
+//             //],
+//             timestamp: new Date(),
+//             //footer: {
+//             //  icon_url: client.user.avatarURL,
+//             //  text: "© Example"
+//             //}
+//           }
+//         });
+//       }
+// //-------사다리타기--------
+//   if (message.content.split(" ")[0] == "!사다리타기") {
+//     message.reply(ladder(message.content.split(" ")));
+//   }
+// //-------롤전적--------
+//   if (message.content.split(" ")[0] == "!롤전적") {
+//   //message.reply(lol(message.content.split(" ")[1]));
 
-    wjswjr = "찾는 닉네임이 없습니다.";
+//     wjswjr = "찾는 닉네임이 없습니다.";
     
 
-    lol(message.content.substring(5,message.content.length));
+//     lol(message.content.substring(5,message.content.length));
     
-    //시간지연 및 메시지
-    setTimeout(function() {
-        message.reply(wjswjr);
-      }, 3000);
+//     //시간지연 및 메시지
+//     setTimeout(function() {
+//         message.reply(wjswjr);
+//       }, 3000);
     
   
-}
+// }
 
-//-------기타--------
-switch (message.content.split(" ")[0]) {
-    case "뚱수임?":
-    message.channel.send("재능수임~");
-        break;
-    case "재능수임?":
-    message.channel.send("뚱수임~");
-        break;
-    default:
-        break;
-}
-});
+// //-------기타--------
+// switch (message.content.split(" ")[0]) {
+//     case "뚱수임?":
+//     message.channel.send("재능수임~");
+//         break;
+//     case "재능수임?":
+//     message.channel.send("뚱수임~");
+//         break;
+//     default:
+//         break;
+// }
+
+// });
  
-client.login("NTAxMDAwNTA1MDcwMTkwNjAx.DqTBRQ.lWJUglUKK7M_he3pMKdRR1R1wT4");
+client.login("NTAxMDAwNTA1MDcwMTkwNjAx.GSU_k8.oXUBxX2DUihDXxFcMDM4HnQq15bAudCvfSAvLE");
 
 //--------------------------------롤전적------------------------------------
 function lol(nick){
