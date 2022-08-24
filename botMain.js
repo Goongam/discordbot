@@ -1,6 +1,8 @@
 import { Client, GatewayIntentBits } from "discord.js";
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 import registerCommnad from './deploy-commands.mjs';
+import config from '../config.json' assert {type: 'json'};
+
 
 var rmawl = ['붕괴','옵치','오버워치','메이플','불도저','honkai','금지어1',];
 
@@ -116,7 +118,7 @@ client.on('interactionCreate', async interaction => {
 
 // });
  
-client.login("NTAxMDAwNTA1MDcwMTkwNjAx.GSU_k8.oXUBxX2DUihDXxFcMDM4HnQq15bAudCvfSAvLE");
+client.login(config.token);
 
 //--------------------------------롤전적------------------------------------
 function lol(nick){
