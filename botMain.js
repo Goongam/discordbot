@@ -24,6 +24,14 @@ client.on('interactionCreate', async interaction => {
         let i= interaction.options.getInteger('int'); 
         await interaction.reply(i+"");
     }
+    if(interaction.commandName == '뚱수임'){
+        
+        await interaction.reply("재능수임~");
+    }
+    if(interaction.commandName == 'ban2'){
+        
+        await interaction.reply("ban: "+interaction.options.getUser('target'));
+    }
   });
 
 

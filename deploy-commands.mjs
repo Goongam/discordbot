@@ -1,5 +1,5 @@
 import config from '../config.json' assert {type: 'json'};
-import { SlashCommandBuilder, Routes } from 'discord.js';
+import { SlashCommandBuilder, Routes, PermissionFlagsBits } from 'discord.js';
 import { REST }  from '@discordjs/rest';
 // const { clientId, guildId, token } = require('./config.json');
 
@@ -11,10 +11,9 @@ const token = config.token;
 const commands = [
 	new SlashCommandBuilder().setName('ping').setDescription('Replies with pong!'),
 	new SlashCommandBuilder().setName('server').setDescription('Replies with server info!'),
+	new SlashCommandBuilder().setName('뚱수임').setDescription('뚱수임?'),
 	// new SlashCommandBuilder().setName('user').setDescription('Replies with user info!'),
-	new SlashCommandBuilder()
-	.setName('ping2')
-	.setDescription('Replies with Pong2!')
+	new SlashCommandBuilder().setName('ping2').setDescription('Replies with Pong2!')
 	.addStringOption(option => option.setName('input').setDescription('Enter a string'))
 	.addIntegerOption(option => option.setName('int').setDescription('Enter an integer'))
 	.addBooleanOption(option => option.setName('choice').setDescription('Select a boolean'))
@@ -23,7 +22,9 @@ const commands = [
 	.addRoleOption(option => option.setName('muted').setDescription('Select a role'))
 	.addNumberOption(option => option.setName('num').setDescription('Enter a number'))
 	.addMentionableOption(option => option.setName('mentionable').setDescription('Mention something'))
-	.addAttachmentOption(option => option.setName('attachment').setDescription('Attach something'))
+	.addAttachmentOption(option => option.setName('attachment').setDescription('Attach something')),
+	new SlashCommandBuilder().setName('ban2').setDescription('ban member')
+	.addUserOption(option => option.setName('target').setDescription('banMember')).setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
 ]
 	.map(command => command.toJSON());
 
