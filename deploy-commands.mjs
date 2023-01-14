@@ -8,7 +8,7 @@ const guildId = config.guildId;
 const token = config.token;
 
 
-const commands = [
+export const commands = [
 	new SlashCommandBuilder().setName('ping').setDescription('Replies with pong!'),
 	new SlashCommandBuilder().setName('server').setDescription('Replies with server info!'),
 	new SlashCommandBuilder().setName('뚱수임').setDescription('뚱수임?'),
@@ -24,22 +24,27 @@ const commands = [
 	.addMentionableOption(option => option.setName('mentionable').setDescription('Mention something'))
 	.addAttachmentOption(option => option.setName('attachment').setDescription('Attach something')),
 	new SlashCommandBuilder().setName('ban2').setDescription('ban member')
-	.addUserOption(option => option.setName('target').setDescription('banMember')).setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-]
-	.map(command => command.toJSON());
+	.addUserOption(option => option.setName('target').setDescription('banMember')).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+	
+	new SlashCommandBuilder().setName('노래재생').setDescription('노래재생')
+	.addStringOption(option => option.setName('input').setDescription('유튜브 url 입력')).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+	// new SlashCommandBuilder().setName('노래재생').setDescription('노래를 재생')
+	// .addStringOption(option => option.setName('input').setDescription('Enter a string'))
+	new SlashCommandBuilder().setName('스킵').setDescription('노래스킵')
+].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(token);
 
 /**
  * @description Routes.applicationCommands(clientId) 모든 서버에서 커맨드 적용
  * */
-export default function registerCommnad(){
+export function registerCommnad(){
     rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands })
 	.then(() => console.log('Successfully registered application commands.'))
 	.catch(console.error);
 }
 
-function registerCommnadForAll(){
+export function registerCommnadForAll(){
     rest.put(Routes.applicationCommands(clientId), { body: commands })
 	.then(() => console.log('Successfully registered All application commands.'))
 	.catch(console.error);

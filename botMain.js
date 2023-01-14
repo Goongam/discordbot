@@ -1,17 +1,42 @@
-import { Client, GatewayIntentBits } from "discord.js";
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-import registerCommnad from './deploy-commands.mjs';
-import config from '../config.json' assert {type: 'json'};
+import { Client, GatewayIntentBits, Collection } from "discord.js";
+import { Player, QueryType } from "discord-player";
+import {registerCommnad, registerCommnadForAll} from './deploy-commands.mjs';
 
+import config from '../config.json' assert {type: 'json'};
+import ytdl from "ytdl-core";
+
+import { commands } from "./deploy-commands.mjs";
+
+const client = new Client({ 
+    intents: [
+        GatewayIntentBits.Guilds,
+        "Guilds",
+        "GuildVoiceStates"
+    ] 
+});
+
+client.slashcommands = new Collection();
+
+commands.forEach(command => {
+    client.slashcommands.set(command.name, commands);
+});
+
+client.player = new Player(client, {
+    ytdlOptions: {
+        quality: "highestaudio",
+        highWaterMark: 1 << 25
+    }
+});
 
 var rmawl = ['붕괴','옵치','오버워치','메이플','불도저','honkai','금지어1',];
 
 client.on("ready", () => {
   console.log("준비 완료!");
-  registerCommnad();
+//   registerCommnad();
+  registerCommnadForAll();
 });
  
-client.on('interactionCreate', async interaction => {
+client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
     if (interaction.commandName === 'ping') {
@@ -32,9 +57,41 @@ client.on('interactionCreate', async interaction => {
         
         await interaction.reply("ban: "+interaction.options.getUser('target'));
     }
+    if(interaction.commandName === '노래재생'){
+        // console.log(client.slashcommands);
+        //TODO: https://www.youtube.com/watch?v=fN29HIaoHLU, 19분
+        // console.log(client.player.createQueue);
+        // console.log(interaction.member.voice.channel);
+
+        // let embed = new MessageEmbed();
+
+        const queue = await client.player.createQueue(interaction.guild, {
+            metadata: {
+                channel: interaction.channel
+            }
+        });
+        if(!queue.connection) await queue.connect(interaction.member.voice.channel);
+
+        const url = interaction.options.getString('input');
+        const searchResult = await client.player.search(url,{
+            requestedBy: interaction.user,
+            searchEngine: QueryType.YOUTUBE_VIDEO
+        }).then(x => x.tracks[0]);
+        // if (searchResult.tracks.length === 0)
+        //     return interaction.reply("no result");
+
+        // const song = searchResult.tracks[0];
+        queue.play(searchResult);
+    //     // const connection = interaction.channel.join();
+    //     // connection.play(ytdl("https://www.youtube.com/watch?v=X-NMn5H4hXU&t=4s", { filter: '' }));
+    }
+    if(interaction.commandName === '스킵'){
+        const queue = client.player.getQueue(interaction.guildId);
+        queue.skip();
+    }
   });
-
-
+  
+  client.login(config.token);
 // client.on("message", message => {
 
 //     console.log("czxc");
@@ -126,7 +183,7 @@ client.on('interactionCreate', async interaction => {
 
 // });
  
-client.login(config.token);
+
 
 //--------------------------------롤전적------------------------------------
 function lol(nick){
