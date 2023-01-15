@@ -60,7 +60,19 @@ client.on('interactionCreate', async (interaction) => {
     }
     if(interaction.commandName === '노래재생'){
         // let embed = new MessageEmbed();
-    
+
+        //재생 큐 생성
+        if(!client.player.getQueue(interaction.guildId)){
+            await client.player.createQueue(interaction.guild, {
+                metadata: {
+                    channel: interaction.channel
+                }
+            });
+
+            console.log('큐 생성');
+        }
+        
+
         if(!interaction.member.voice.channel) return interaction.reply("통화방에 입장해야 합니다");
 
         const url = interaction.options.getString('input');
@@ -75,17 +87,6 @@ client.on('interactionCreate', async (interaction) => {
         if (searchResult.tracks.length === 0)
             return interaction.editReply("no result");
 
-        // console.log(searchResult);
-        
-        const selectMusics = searchResult.tracks.map( track => {
-            return {
-                label: track.title,
-                description: track.author,
-                value: track,
-            }
-        } );
-
-        // console.log('select',...selectMusics.slice(0, 5));
 
         const row = new ActionRowBuilder()
             .addComponents(
@@ -110,33 +111,38 @@ client.on('interactionCreate', async (interaction) => {
         // queue.play();
 
     }
-    //TODO: 스킵 로직 수정
+
     if(interaction.commandName === '스킵'){
-        const queue = client.player.getQueue(interaction.guildId);
-        queue.skip();
+        await interaction.deferReply();
+
+        const queue = await client.player.getQueue(interaction.guildId);
+        
+        if(queue.tracks.length === 0) queue.skip();
+        else await queue.play();
+        
+
+
+        await interaction.editReply("스킵");
+
     }
     if(interaction.commandName === '재생목록'){
-        const queue = client.player.getQueue(interaction.guildId);
+        await interaction.deferReply();
+        
+        const queue = await client.player.getQueue(interaction.guildId);
         console.log(queue.tracks);
+        await interaction.editReply("재생목록");
     }
     
   });
   
-
+//노래선택 리스너
     client.on(Events.InteractionCreate, async interaction => {
 
         if (!interaction.isSelectMenu()) return;
 
         await interaction.deferUpdate();
 
-        //재생 큐 생성
-        let queue = client.player.getQueue(interaction.guildId);
-        if(!queue) console.log('큐 생성');
-        if(!queue) queue = await client.player.createQueue(interaction.guild, {
-            metadata: {
-                channel: interaction.channel
-            }
-        });
+        let queue = await client.player.getQueue(interaction.guildId);
     
         //통화방 연결
             if(!queue.connection) await queue.connect(interaction.member.voice.channel);   
@@ -153,10 +159,11 @@ client.on('interactionCreate', async (interaction) => {
         if (interaction.customId === 'music-select') {
             await interaction.editReply({ content: `${song.title}을 재생합니다`, components: [] });
         }
-
+        
+        const isplaying = queue.current;
         queue.addTrack(song);
-
-        if(!queue.playing) await queue.play();
+        
+        if(!isplaying) await queue.play();
 
     });
   client.login(config.token);
