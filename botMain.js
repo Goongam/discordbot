@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection } from "discord.js";
+import { Client, GatewayIntentBits, Collection, ActionRowBuilder, SelectMenuBuilder, Events } from "discord.js";
 import { Player, QueryType } from "discord-player";
 import {registerCommnad, registerCommnadForAll} from './deploy-commands.mjs';
 
@@ -6,6 +6,7 @@ import config from '../config.json' assert {type: 'json'};
 import ytdl from "ytdl-core";
 
 import { commands } from "./deploy-commands.mjs";
+import { title } from "process";
 
 const client = new Client({ 
     intents: [
@@ -32,8 +33,8 @@ var rmawl = ['붕괴','옵치','오버워치','메이플','불도저','honkai','
 
 client.on("ready", () => {
   console.log("준비 완료!");
-//   registerCommnad();
-  registerCommnadForAll();
+  registerCommnad();
+//   registerCommnadForAll();
 });
  
 client.on('interactionCreate', async (interaction) => {
@@ -58,39 +59,106 @@ client.on('interactionCreate', async (interaction) => {
         await interaction.reply("ban: "+interaction.options.getUser('target'));
     }
     if(interaction.commandName === '노래재생'){
-        // console.log(client.slashcommands);
-        //TODO: https://www.youtube.com/watch?v=fN29HIaoHLU, 19분
-        // console.log(client.player.createQueue);
-        // console.log(interaction.member.voice.channel);
-
         // let embed = new MessageEmbed();
-
-        const queue = await client.player.createQueue(interaction.guild, {
-            metadata: {
-                channel: interaction.channel
-            }
-        });
-        if(!queue.connection) await queue.connect(interaction.member.voice.channel);
+    
+        if(!interaction.member.voice.channel) return interaction.reply("통화방에 입장해야 합니다");
 
         const url = interaction.options.getString('input');
+        if(!url) return interaction.editReply("유튜브영상 제목 또는 url을 입력해주세요");
+
+        await interaction.deferReply();
+
         const searchResult = await client.player.search(url,{
             requestedBy: interaction.user,
-            searchEngine: QueryType.YOUTUBE_VIDEO
-        }).then(x => x.tracks[0]);
-        // if (searchResult.tracks.length === 0)
-        //     return interaction.reply("no result");
+            // searchEngine: QueryType.YOUTUBE_VIDEO
+        });
+        if (searchResult.tracks.length === 0)
+            return interaction.editReply("no result");
+
+        // console.log(searchResult);
+        
+        const selectMusics = searchResult.tracks.map( track => {
+            return {
+                label: track.title,
+                description: track.author,
+                value: track,
+            }
+        } );
+
+        // console.log('select',...selectMusics.slice(0, 5));
+
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new SelectMenuBuilder()
+                .setCustomId('music-select')
+                .setPlaceholder('Nothing selected')
+                .addOptions(
+                    searchResult.tracks.map( track => {
+                        return {
+                            label: track.title,
+                            description: track.author,
+                            value: track.url,
+                        }
+                    } )
+                ),
+        );
+
+        await interaction.editReply({content: '선택', components: [row]});
+
 
         // const song = searchResult.tracks[0];
-        queue.play(searchResult);
-    //     // const connection = interaction.channel.join();
-    //     // connection.play(ytdl("https://www.youtube.com/watch?v=X-NMn5H4hXU&t=4s", { filter: '' }));
+        // queue.play();
+
     }
+    //TODO: 스킵 로직 수정
     if(interaction.commandName === '스킵'){
         const queue = client.player.getQueue(interaction.guildId);
         queue.skip();
     }
+    if(interaction.commandName === '재생목록'){
+        const queue = client.player.getQueue(interaction.guildId);
+        console.log(queue.tracks);
+    }
+    
   });
   
+
+    client.on(Events.InteractionCreate, async interaction => {
+
+        if (!interaction.isSelectMenu()) return;
+
+        await interaction.deferUpdate();
+
+        //재생 큐 생성
+        let queue = client.player.getQueue(interaction.guildId);
+        if(!queue) console.log('큐 생성');
+        if(!queue) queue = await client.player.createQueue(interaction.guild, {
+            metadata: {
+                channel: interaction.channel
+            }
+        });
+    
+        //통화방 연결
+            if(!queue.connection) await queue.connect(interaction.member.voice.channel);   
+        
+        // console.log('getQueue',client.player.getQueue(interaction.guildId));
+
+        const url = interaction.values[0];
+
+        const searchResult = await client.player.search(url,{
+            requestedBy: interaction.user,
+        });
+        const song = searchResult.tracks[0];
+
+        if (interaction.customId === 'music-select') {
+            await interaction.editReply({ content: `${song.title}을 재생합니다`, components: [] });
+        }
+
+        queue.addTrack(song);
+
+        if(!queue.playing) await queue.play();
+
+    });
   client.login(config.token);
 // client.on("message", message => {
 

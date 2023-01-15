@@ -30,7 +30,8 @@ export const commands = [
 	.addStringOption(option => option.setName('input').setDescription('유튜브 url 입력')).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 	// new SlashCommandBuilder().setName('노래재생').setDescription('노래를 재생')
 	// .addStringOption(option => option.setName('input').setDescription('Enter a string'))
-	new SlashCommandBuilder().setName('스킵').setDescription('노래스킵')
+	new SlashCommandBuilder().setName('스킵').setDescription('노래스킵'),
+	new SlashCommandBuilder().setName('재생목록').setDescription('재생목록')
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: '10' }).setToken(token);
