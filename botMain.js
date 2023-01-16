@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits, Collection, ActionRowBuilder, SelectMenuBuilder, Events, EmbedBuilder } from "discord.js";
-import { Player, QueryType } from "discord-player";
+import { Player, QueryType, QueueRepeatMode } from "discord-player";
 import {registerCommnad, registerCommnadForAll} from './deploy-commands.mjs';
 
 import config from '../config.json' assert {type: 'json'};
@@ -58,12 +58,14 @@ client.on('interactionCreate', async (interaction) => {
         
         await interaction.reply("ban: "+interaction.options.getUser('target'));
     }
+    //TODO: 노래 종료시 다음노래 자동 재생
     if(interaction.commandName === '노래재생'){
         // let embed = new MessageEmbed();
         await interaction.deferReply();
         //재생 큐 생성
-        if(!client.player.getQueue(interaction.guildId)){
-            await client.player.createQueue(interaction.guild, {
+        let queue = client.player.getQueue(interaction.guildId);
+        if(!queue){
+            queue = await client.player.createQueue(interaction.guild, {
                 metadata: {
                     channel: interaction.channel
                 }
@@ -73,12 +75,13 @@ client.on('interactionCreate', async (interaction) => {
         }
         
 
-        if(!interaction.member.voice.channel) return interaction.reply("통화방에 입장해야 합니다");
+        if(!interaction.member.voice.channel) return interaction.editReply("통화방에 입장해야 합니다");
 
         const url = interaction.options.getString('input');
         if(!url) return interaction.editReply("유튜브영상 제목 또는 url을 입력해주세요");
 
-        
+        //통화방 입장
+        if(!queue.connection) await queue.connect(interaction.member.voice.channel); 
 
         const searchResult = await client.player.search(url,{
             requestedBy: interaction.user,
@@ -118,7 +121,7 @@ client.on('interactionCreate', async (interaction) => {
         // queue.play();
 
     }
-
+    //TODO: 마지막곡 스킵x
     if(interaction.commandName === '스킵'){
         await interaction.deferReply();
 
@@ -180,12 +183,15 @@ client.on('interactionCreate', async (interaction) => {
         //통화방 연결
         let queue = await client.player.getQueue(interaction.guildId);
 
-        if(!queue.connection) await queue.connect(interaction.member.voice.channel);   
+          
 
         const isplaying = queue.current;
         queue.addTrack(song);
-        
-        if(!isplaying) await queue.play();
+        //QueueRepeatMode.OFF, QueueRepeatMode.QUEUE, QueueRepeatMode.TRACK, QueueRepeatMode.AUTOPLAY
+        // queue.setRepeatMode(QueueRepeatMode.TRACK);
+        //TODO: 동시에 입력시 isplaying false 2개 해결
+
+        if(!isplaying) await queue.play(); // { immediate: true } 적용해보기
 
     });
   client.login(config.token);
