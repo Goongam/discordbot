@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection, ActionRowBuilder, SelectMenuBuilder, Events } from "discord.js";
+import { Client, GatewayIntentBits, Collection, ActionRowBuilder, SelectMenuBuilder, Events, EmbedBuilder } from "discord.js";
 import { Player, QueryType } from "discord-player";
 import {registerCommnad, registerCommnadForAll} from './deploy-commands.mjs';
 
@@ -33,8 +33,8 @@ var rmawl = ['붕괴','옵치','오버워치','메이플','불도저','honkai','
 
 client.on("ready", () => {
   console.log("준비 완료!");
-  registerCommnad();
-//   registerCommnadForAll();
+//   registerCommnad();
+  registerCommnadForAll();
 });
  
 client.on('interactionCreate', async (interaction) => {
@@ -60,7 +60,7 @@ client.on('interactionCreate', async (interaction) => {
     }
     if(interaction.commandName === '노래재생'){
         // let embed = new MessageEmbed();
-
+        await interaction.deferReply();
         //재생 큐 생성
         if(!client.player.getQueue(interaction.guildId)){
             await client.player.createQueue(interaction.guild, {
@@ -78,7 +78,7 @@ client.on('interactionCreate', async (interaction) => {
         const url = interaction.options.getString('input');
         if(!url) return interaction.editReply("유튜브영상 제목 또는 url을 입력해주세요");
 
-        await interaction.deferReply();
+        
 
         const searchResult = await client.player.search(url,{
             requestedBy: interaction.user,
@@ -92,19 +92,26 @@ client.on('interactionCreate', async (interaction) => {
             .addComponents(
                 new SelectMenuBuilder()
                 .setCustomId('music-select')
-                .setPlaceholder('Nothing selected')
+                .setPlaceholder('노래를 선택하세요')
                 .addOptions(
-                    searchResult.tracks.map( track => {
-                        return {
-                            label: track.title,
-                            description: track.author,
-                            value: track.url,
+                    [
+                        ...searchResult.tracks.map( track => {
+                            return {
+                                label: track.title.slice(0,100),
+                                description: track.author.slice(0,100),
+                                value: track.url.split('&')[0],
+                            }
+                        } ),
+                        {
+                            label: '취소',
+                            description: '노래 취소',
+                            value: 'cancel'
                         }
-                    } )
+                    ]
                 ),
         );
 
-        await interaction.editReply({content: '선택', components: [row]});
+        await interaction.editReply({content: '노래 선택', components: [row]});
 
 
         // const song = searchResult.tracks[0];
@@ -117,20 +124,35 @@ client.on('interactionCreate', async (interaction) => {
 
         const queue = await client.player.getQueue(interaction.guildId);
         
+        const currentSong = queue.current;
+
         if(queue.tracks.length === 0) queue.skip();
         else await queue.play();
         
-
-
-        await interaction.editReply("스킵");
+        await interaction.editReply(`${currentSong.title}을(를) 스킵하였습니다`);
 
     }
+
     if(interaction.commandName === '재생목록'){
         await interaction.deferReply();
-        
+
         const queue = await client.player.getQueue(interaction.guildId);
-        console.log(queue.tracks);
-        await interaction.editReply("재생목록");
+
+        const currentSong = queue?.current;
+        const queueList = queue?.tracks.map( (track, index) => (
+            `**${index + 1}.** \`[${track.duration}]\` ${track.title} -- <@${track.requestedBy.id}>\n`
+        )).join('');
+
+
+        const playlistEmbed = new EmbedBuilder()
+        .setDescription(`
+            __현재재생__
+            ${currentSong ? `\`[${currentSong.duration}]\` ${currentSong.title} -- <@${currentSong.requestedBy.id}>` : '없음'}\n
+            __재생목록__
+            ${queueList ? queueList : '없음'}
+        `);
+
+        await interaction.editReply({embeds: [playlistEmbed]});
     }
     
   });
@@ -142,14 +164,9 @@ client.on('interactionCreate', async (interaction) => {
 
         await interaction.deferUpdate();
 
-        let queue = await client.player.getQueue(interaction.guildId);
-    
-        //통화방 연결
-            if(!queue.connection) await queue.connect(interaction.member.voice.channel);   
-        
-        // console.log('getQueue',client.player.getQueue(interaction.guildId));
-
         const url = interaction.values[0];
+
+        if(url === "cancel") return await interaction.editReply({ content: `노래 재생이 취소 되었습니다`, components: [] });
 
         const searchResult = await client.player.search(url,{
             requestedBy: interaction.user,
@@ -160,6 +177,11 @@ client.on('interactionCreate', async (interaction) => {
             await interaction.editReply({ content: `${song.title}을 재생합니다`, components: [] });
         }
         
+        //통화방 연결
+        let queue = await client.player.getQueue(interaction.guildId);
+
+        if(!queue.connection) await queue.connect(interaction.member.voice.channel);   
+
         const isplaying = queue.current;
         queue.addTrack(song);
         
