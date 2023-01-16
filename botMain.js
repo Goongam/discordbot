@@ -1,104 +1,286 @@
-const Discord = require("discord.js");
-const client = new Discord.Client();
- 
+import { Client, GatewayIntentBits, Collection, ActionRowBuilder, SelectMenuBuilder, Events, EmbedBuilder } from "discord.js";
+import { Player, QueryType } from "discord-player";
+import {registerCommnad, registerCommnadForAll} from './deploy-commands.mjs';
+
+import config from '../config.json' assert {type: 'json'};
+import ytdl from "ytdl-core";
+
+import { commands } from "./deploy-commands.mjs";
+import { title } from "process";
+
+const client = new Client({ 
+    intents: [
+        GatewayIntentBits.Guilds,
+        "Guilds",
+        "GuildVoiceStates"
+    ] 
+});
+
+client.slashcommands = new Collection();
+
+commands.forEach(command => {
+    client.slashcommands.set(command.name, commands);
+});
+
+client.player = new Player(client, {
+    ytdlOptions: {
+        quality: "highestaudio",
+        highWaterMark: 1 << 25
+    }
+});
+
 var rmawl = ['붕괴','옵치','오버워치','메이플','불도저','honkai','금지어1',];
 
 client.on("ready", () => {
   console.log("준비 완료!");
- 
+//   registerCommnad();
+  registerCommnadForAll();
 });
  
+client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
 
-
-client.on("message", message => {
-
-    if (message.author.bot) return;
-
-    if (message.content === '!pinga') {
-    message.channel.send("Hello").then((neMessage) => {neMessage.edit("Edited!");});
+    if (interaction.commandName === 'ping') {
+      await interaction.reply('Pong!');
     }
-
-    //---핑---
-    if (message.content === '!ping') {
-    message.reply('`'+Math.floor(client.ping) + ' ms`');
+    if(interaction.commandName == 'server'){
+        await interaction.reply(interaction.guildLocale);
     }
-    if (message.content === '뚱수야 자소서써와') {
-        message.reply("넹");
+    if(interaction.commandName == 'ping2'){
+        let i= interaction.options.getInteger('int'); 
+        await interaction.reply(i+"");
+    }
+    if(interaction.commandName == '뚱수임'){
+        
+        await interaction.reply("재능수임~");
+    }
+    if(interaction.commandName == 'ban2'){
+        
+        await interaction.reply("ban: "+interaction.options.getUser('target'));
+    }
+    if(interaction.commandName === '노래재생'){
+        // let embed = new MessageEmbed();
+        await interaction.deferReply();
+        //재생 큐 생성
+        if(!client.player.getQueue(interaction.guildId)){
+            await client.player.createQueue(interaction.guild, {
+                metadata: {
+                    channel: interaction.channel
+                }
+            });
+
+            console.log('큐 생성');
         }
-    //-------금지어--------
-    var rmawlmsg = message.content;
-    rmawlmsg = rmawlmsg.replace(/ /gi, "")
-    
-    for(i = 0; i < rmawl.length;i++){
-        if (rmawlmsg.indexOf(rmawl[i]) != -1){
-            message.delete()
-            message.channel.send("금지어가 감지되었습니다! ").then((newMsg) => {newMsg.delete(5000);})
-            return;
-          }
-    }
+        
 
-    if(message.content.indexOf("호") != -1){
-        message.delete()
-        message.channel.send("'호'가 감지되었습니다! ").then((newMsg) => {newMsg.delete(5000);})
-        return;
-    }
+        if(!interaction.member.voice.channel) return interaction.reply("통화방에 입장해야 합니다");
 
-    if (message.content.split(" ")[0] == "!금지어") {
-        message.channel.send({embed: {
-            color: 3447003,
-            author: {
-              name: "금지어 목록",
-              icon_url: client.user.avatarURL
-            },
-            title: rmawl.join(', '),
-            //fields: [{
-            //    name: "Fields",
-            //    value: "They can have different fields with small headlines."
-            //  }, 
-            //],
-            timestamp: new Date(),
-            //footer: {
-            //  icon_url: client.user.avatarURL,
-            //  text: "© Example"
-            //}
-          }
+        const url = interaction.options.getString('input');
+        if(!url) return interaction.editReply("유튜브영상 제목 또는 url을 입력해주세요");
+
+        
+
+        const searchResult = await client.player.search(url,{
+            requestedBy: interaction.user,
+            // searchEngine: QueryType.YOUTUBE_VIDEO
         });
-      }
-//-------사다리타기--------
-  if (message.content.split(" ")[0] == "!사다리타기") {
-    message.reply(ladder(message.content.split(" ")));
-  }
-//-------롤전적--------
-  if (message.content.split(" ")[0] == "!롤전적") {
-  //message.reply(lol(message.content.split(" ")[1]));
+        if (searchResult.tracks.length === 0)
+            return interaction.editReply("no result");
 
-    wjswjr = "찾는 닉네임이 없습니다.";
+
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new SelectMenuBuilder()
+                .setCustomId('music-select')
+                .setPlaceholder('노래를 선택하세요')
+                .addOptions(
+                    [
+                        ...searchResult.tracks.map( track => {
+                            return {
+                                label: track.title.slice(0,100),
+                                description: track.author.slice(0,100),
+                                value: track.url.split('&')[0],
+                            }
+                        } ),
+                        {
+                            label: '취소',
+                            description: '노래 취소',
+                            value: 'cancel'
+                        }
+                    ]
+                ),
+        );
+
+        await interaction.editReply({content: '노래 선택', components: [row]});
+
+
+        // const song = searchResult.tracks[0];
+        // queue.play();
+
+    }
+
+    if(interaction.commandName === '스킵'){
+        await interaction.deferReply();
+
+        const queue = await client.player.getQueue(interaction.guildId);
+        
+        const currentSong = queue.current;
+
+        if(queue.tracks.length === 0) queue.skip();
+        else await queue.play();
+        
+        await interaction.editReply(`${currentSong.title}을(를) 스킵하였습니다`);
+
+    }
+
+    if(interaction.commandName === '재생목록'){
+        await interaction.deferReply();
+
+        const queue = await client.player.getQueue(interaction.guildId);
+
+        const currentSong = queue?.current;
+        const queueList = queue?.tracks.map( (track, index) => (
+            `**${index + 1}.** \`[${track.duration}]\` ${track.title} -- <@${track.requestedBy.id}>\n`
+        )).join('');
+
+
+        const playlistEmbed = new EmbedBuilder()
+        .setDescription(`
+            __현재재생__
+            ${currentSong ? `\`[${currentSong.duration}]\` ${currentSong.title} -- <@${currentSong.requestedBy.id}>` : '없음'}\n
+            __재생목록__
+            ${queueList ? queueList : '없음'}
+        `);
+
+        await interaction.editReply({embeds: [playlistEmbed]});
+    }
+    
+  });
+  
+//노래선택 리스너
+    client.on(Events.InteractionCreate, async interaction => {
+
+        if (!interaction.isSelectMenu()) return;
+
+        await interaction.deferUpdate();
+
+        const url = interaction.values[0];
+
+        if(url === "cancel") return await interaction.editReply({ content: `노래 재생이 취소 되었습니다`, components: [] });
+
+        const searchResult = await client.player.search(url,{
+            requestedBy: interaction.user,
+        });
+        const song = searchResult.tracks[0];
+
+        if (interaction.customId === 'music-select') {
+            await interaction.editReply({ content: `${song.title}을 재생합니다`, components: [] });
+        }
+        
+        //통화방 연결
+        let queue = await client.player.getQueue(interaction.guildId);
+
+        if(!queue.connection) await queue.connect(interaction.member.voice.channel);   
+
+        const isplaying = queue.current;
+        queue.addTrack(song);
+        
+        if(!isplaying) await queue.play();
+
+    });
+  client.login(config.token);
+// client.on("message", message => {
+
+//     console.log("czxc");
+
+//     if (message.author.bot) return;
+
+//     if (message.content === '!pinga') {
+//     message.channel.send("Hello").then((neMessage) => {neMessage.edit("Edited!");});
+//     }
+
+//     //---핑---
+//     if (message.content === '!ping') {
+//     message.reply('`'+Math.floor(client.ping) + ' ms`');
+//     }
+//     if (message.content === '뚱수야 자소서써와') {
+//         message.reply("넹");
+//         }
+//     //-------금지어--------
+//     var rmawlmsg = message.content;
+//     rmawlmsg = rmawlmsg.replace(/ /gi, "")
+    
+//     for(i = 0; i < rmawl.length;i++){
+//         if (rmawlmsg.indexOf(rmawl[i]) != -1){
+//             message.delete()
+//             message.channel.send("금지어가 감지되었습니다! ").then((newMsg) => {newMsg.delete(5000);})
+//             return;
+//           }
+//     }
+
+//     if(message.content.indexOf("호") != -1){
+//         message.delete()
+//         message.channel.send("'호'가 감지되었습니다! ").then((newMsg) => {newMsg.delete(5000);})
+//         return;
+//     }
+
+//     if (message.content.split(" ")[0] == "!금지어") {
+//         message.channel.send({embed: {
+//             color: 3447003,
+//             author: {
+//               name: "금지어 목록",
+//               icon_url: client.user.avatarURL
+//             },
+//             title: rmawl.join(', '),
+//             //fields: [{
+//             //    name: "Fields",
+//             //    value: "They can have different fields with small headlines."
+//             //  }, 
+//             //],
+//             timestamp: new Date(),
+//             //footer: {
+//             //  icon_url: client.user.avatarURL,
+//             //  text: "© Example"
+//             //}
+//           }
+//         });
+//       }
+// //-------사다리타기--------
+//   if (message.content.split(" ")[0] == "!사다리타기") {
+//     message.reply(ladder(message.content.split(" ")));
+//   }
+// //-------롤전적--------
+//   if (message.content.split(" ")[0] == "!롤전적") {
+//   //message.reply(lol(message.content.split(" ")[1]));
+
+//     wjswjr = "찾는 닉네임이 없습니다.";
     
 
-    lol(message.content.substring(5,message.content.length));
+//     lol(message.content.substring(5,message.content.length));
     
-    //시간지연 및 메시지
-    setTimeout(function() {
-        message.reply(wjswjr);
-      }, 3000);
+//     //시간지연 및 메시지
+//     setTimeout(function() {
+//         message.reply(wjswjr);
+//       }, 3000);
     
   
-}
+// }
 
-//-------기타--------
-switch (message.content.split(" ")[0]) {
-    case "뚱수임?":
-    message.channel.send("재능수임~");
-        break;
-    case "재능수임?":
-    message.channel.send("뚱수임~");
-        break;
-    default:
-        break;
-}
-});
+// //-------기타--------
+// switch (message.content.split(" ")[0]) {
+//     case "뚱수임?":
+//     message.channel.send("재능수임~");
+//         break;
+//     case "재능수임?":
+//     message.channel.send("뚱수임~");
+//         break;
+//     default:
+//         break;
+// }
+
+// });
  
-client.login("NTAxMDAwNTA1MDcwMTkwNjAx.DqTBRQ.lWJUglUKK7M_he3pMKdRR1R1wT4");
+
 
 //--------------------------------롤전적------------------------------------
 function lol(nick){
