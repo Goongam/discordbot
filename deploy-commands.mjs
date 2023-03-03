@@ -1,4 +1,4 @@
-import config from '../config.json' assert {type: 'json'};
+import config from '../config.js';
 import { SlashCommandBuilder, Routes, PermissionFlagsBits } from 'discord.js';
 import { REST }  from '@discordjs/rest';
 // const { clientId, guildId, token } = require('./config.json');

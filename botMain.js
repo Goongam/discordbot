@@ -2,7 +2,7 @@ import { Client, GatewayIntentBits, Collection, ActionRowBuilder, SelectMenuBuil
 import { Player, QueryType, QueueRepeatMode } from "discord-player";
 import {registerCommnad, registerCommnadForAll} from './deploy-commands.mjs';
 
-import config from '../config.json' assert {type: 'json'};
+import config from '../config.js';
 import ytdl from "ytdl-core";
 
 import { commands } from "./deploy-commands.mjs";
