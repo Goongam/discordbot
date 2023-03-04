@@ -127,6 +127,11 @@ client.on('interactionCreate', async (interaction) => {
 
         const queue = await client.player.getQueue(interaction.guildId);
         
+        if(!queue){
+            await interaction.editReply('스킵할 노래가 없습니다');
+            return;
+        }
+
         const currentSong = queue.current;
 
         if(queue.tracks.length === 0) queue.skip();
