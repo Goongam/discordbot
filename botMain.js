@@ -58,70 +58,72 @@ client.on('interactionCreate', async (interaction) => {
         
         await interaction.reply("ban: "+interaction.options.getUser('target'));
     }
-    //TODO: 노래 종료시 다음노래 자동 재생
+
     if(interaction.commandName === '노래재생'){
-        // let embed = new MessageEmbed();
-        await interaction.deferReply();
-        //재생 큐 생성
-        let queue = client.player.getQueue(interaction.guildId);
-        if(!queue){
-            queue = await client.player.createQueue(interaction.guild, {
-                metadata: {
-                    channel: interaction.channel
-                }
+        try {
+            // let embed = new MessageEmbed();
+            await interaction.deferReply();
+            //재생 큐 생성
+            let queue = client.player.getQueue(interaction.guildId);
+            if(!queue){
+                queue = await client.player.createQueue(interaction.guild, {
+                    metadata: {
+                        channel: interaction.channel
+                    }
+                });
+
+                console.log('큐 생성');
+            }
+            
+
+            if(!interaction.member.voice.channel) return interaction.editReply("통화방에 입장해야 합니다");
+
+            const url = interaction.options.getString('input');
+            if(!url) return interaction.editReply("유튜브영상 제목 또는 url을 입력해주세요");
+
+            //통화방 입장
+            if(!queue.connection) await queue.connect(interaction.member.voice.channel); 
+
+            const searchResult = await client.player.search(url,{
+                requestedBy: interaction.user,
+                // searchEngine: QueryType.YOUTUBE_VIDEO
             });
-
-            console.log('큐 생성');
-        }
-        
-
-        if(!interaction.member.voice.channel) return interaction.editReply("통화방에 입장해야 합니다");
-
-        const url = interaction.options.getString('input');
-        if(!url) return interaction.editReply("유튜브영상 제목 또는 url을 입력해주세요");
-
-        //통화방 입장
-        if(!queue.connection) await queue.connect(interaction.member.voice.channel); 
-
-        const searchResult = await client.player.search(url,{
-            requestedBy: interaction.user,
-            // searchEngine: QueryType.YOUTUBE_VIDEO
-        });
-        if (searchResult.tracks.length === 0)
-            return interaction.editReply("no result");
+            if (searchResult.tracks.length === 0)
+                return interaction.editReply("no result");
 
 
-        const row = new ActionRowBuilder()
-            .addComponents(
-                new SelectMenuBuilder()
-                .setCustomId('music-select')
-                .setPlaceholder('노래를 선택하세요')
-                .addOptions(
-                    [
-                        ...searchResult.tracks.map( track => {
-                            return {
-                                label: track.title.slice(0,100),
-                                description: track.author.slice(0,100),
-                                value: track.url.split('&')[0],
+            const row = new ActionRowBuilder()
+                .addComponents(
+                    new SelectMenuBuilder()
+                    .setCustomId('music-select')
+                    .setPlaceholder('노래를 선택하세요')
+                    .addOptions(
+                        [
+                            ...searchResult.tracks.map( track => {
+                                return {
+                                    label: track.title.slice(0,100),
+                                    description: track.author.slice(0,100),
+                                    value: track.url.split('&')[0],
+                                }
+                            } ),
+                            {
+                                label: '취소',
+                                description: '노래 취소',
+                                value: 'cancel'
                             }
-                        } ),
-                        {
-                            label: '취소',
-                            description: '노래 취소',
-                            value: 'cancel'
-                        }
-                    ]
-                ),
-        );
+                        ]
+                    ),
+            );
 
-        await interaction.editReply({content: '노래 선택', components: [row]});
+            await interaction.editReply({content: '노래 선택', components: [row]});
+        } catch (error) {
+            console.error('에러:',error);
+            return interaction.editReply("노래를 찾는 중 오류가 발생하였습니다.");
+        }
 
-
-        // const song = searchResult.tracks[0];
-        // queue.play();
 
     }
-    //TODO: 마지막곡 스킵x
+
     if(interaction.commandName === '스킵'){
         await interaction.deferReply();
 
@@ -133,10 +135,13 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         const currentSong = queue.current;
-
-        if(queue.tracks.length === 0) queue.skip();
+     
+        if(queue.tracks.length === 0) {
+            queue.destroy();
+        }
         else await queue.play();
-        
+
+
         await interaction.editReply(`${currentSong.title}을(를) 스킵하였습니다`);
 
     }
@@ -168,35 +173,39 @@ client.on('interactionCreate', async (interaction) => {
 //노래선택 리스너
     client.on(Events.InteractionCreate, async interaction => {
 
-        if (!interaction.isSelectMenu()) return;
+        try {
+            if (!interaction.isSelectMenu()) return;
 
-        await interaction.deferUpdate();
+            await interaction.deferUpdate();
 
-        const url = interaction.values[0];
+            const url = interaction.values[0];
 
-        if(url === "cancel") return await interaction.editReply({ content: `노래 재생이 취소 되었습니다`, components: [] });
+            if(url === "cancel") return await interaction.editReply({ content: `노래 재생이 취소 되었습니다`, components: [] });
 
-        const searchResult = await client.player.search(url,{
-            requestedBy: interaction.user,
-        });
-        const song = searchResult.tracks[0];
+            const searchResult = await client.player.search(url,{
+                requestedBy: interaction.user,
+            });
+            const song = searchResult.tracks[0];
 
-        if (interaction.customId === 'music-select') {
-            await interaction.editReply({ content: `${song.title}을 재생합니다`, components: [] });
+            if (interaction.customId === 'music-select') {
+                await interaction.editReply({ content: `${song.title}을 재생합니다`, components: [] });
+            }
+            
+            //통화방 연결
+            let queue = await client.player.getQueue(interaction.guildId);
+
+            const isplaying = queue.current;
+            queue.addTrack(song);
+            //QueueRepeatMode.OFF, QueueRepeatMode.QUEUE, QueueRepeatMode.TRACK, QueueRepeatMode.AUTOPLAY
+
+
+            if(!isplaying) await queue.play();
+
+        } catch (error) {
+            await interaction.editReply({ content: `노래를 찾는 중 오류가 발생하였습니다`, components: [] });
+            console.error('에러:',error);
         }
         
-        //통화방 연결
-        let queue = await client.player.getQueue(interaction.guildId);
-
-          
-
-        const isplaying = queue.current;
-        queue.addTrack(song);
-        //QueueRepeatMode.OFF, QueueRepeatMode.QUEUE, QueueRepeatMode.TRACK, QueueRepeatMode.AUTOPLAY
-        // queue.setRepeatMode(QueueRepeatMode.TRACK);
-        //TODO: 동시에 입력시 isplaying false 2개 해결
-
-        if(!isplaying) await queue.play(); // { immediate: true } 적용해보기
 
     });
   client.login(config.token);
